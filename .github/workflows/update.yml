@@ -1,0 +1,22 @@
+name: Update NSW GTFS
+on:
+  schedule:
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download complete GTFS from TfNSW
+        run: |
+          curl -sSfL -H "Authorization: apikey ${{ secrets.TFNSW_API_KEY }}" \
+            -o gtfs.zip "https://api.transport.nsw.gov.au/v1/publictransport/timetables/complete/gtfs"
+          unzip -l gtfs.zip | tail -1
+      - name: Publish as the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest -R ${{ github.repository }} || gh release create latest -R ${{ github.repository }} --title "Latest NSW GTFS" --notes "Auto-updated daily"
+          gh release upload latest gtfs.zip --clobber -R ${{ github.repository }}
