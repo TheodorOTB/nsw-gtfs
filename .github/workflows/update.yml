@@ -9,8 +9,9 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Download every dataset in datasets.txt
+        shell: bash
         env:
           KEY: ${{ secrets.TFNSW_API_KEY }}
         run: |
@@ -18,13 +19,13 @@ jobs:
           while read -r name url; do
             [ -z "$name" ] && continue
             case "$name" in \#*) continue;; esac
-            if echo "$url" | grep -q "api.transport.nsw.gov.au"; then
-              ok=$(curl -sSfL --retry 3 -H "Authorization: apikey $KEY" -o "out/$name" "$url" && echo y)
+            hdr=()
+            if echo "$url" | grep -q "api.transport.nsw.gov.au"; then hdr=(-H "Authorization: apikey $KEY"); fi
+            if curl -sSfL --retry 3 "${hdr[@]}" -o "out/$name" "$url"; then
+              echo "OK   $name $(du -h "out/$name" | cut -f1)"
             else
-              ok=$(curl -sSfL --retry 3 -o "out/$name" "$url" && echo y)
+              echo "FAIL $name"; rm -f "out/$name"
             fi
-            if [ "$ok" = "y" ]; then echo "OK   $name $(du -h "out/$name" | cut -f1)"
-            else echo "FAIL $name"; rm -f "out/$name"; fi
           done < datasets.txt
           (date -u; ls -la out) > out/manifest.txt
       - name: Publish to the "latest" release
