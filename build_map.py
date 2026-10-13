@@ -21,7 +21,7 @@ def enc(coords):
         pl,pn=la,lo
     return ''.join(out)
 
-r=rd('routes.txt'); a=rd('agency.txt'); t=rd('trips.txt',usecols=['route_id','shape_id','trip_id'])
+r=rd('routes.txt'); a=rd('agency.txt'); t=rd('trips.txt',usecols=['route_id','shape_id','trip_id','direction_id','trip_headsign'])
 r=r.merge(a[['agency_id','agency_name']],on='agency_id',how='left')
 r=r[r.route_type.isin(['700','712','714','204','205','2','106','401','900','4'])].copy()
 
@@ -56,14 +56,18 @@ def group(x):
         k='Full Opal' if c in FULL else 'Opal Pay' if c in PAY else 'No Opal payment'
         return ('ferry',k,c,ln[len(c)+1:] if ln.startswith(c+' ') else ln,'')
 r['g']=r.apply(group,axis=1)
-gm=dict(zip(r.route_id,r.g)); t=t[t.route_id.isin(gm)]; t['g']=t.route_id.map(gm)
+gm=dict(zip(r.route_id,r.g)); t=t[t.route_id.isin(gm)].copy()
+t['direction_id']=t.direction_id.fillna('0')
+t['g']=[gm[ri]+((d,) if gm[ri][0]=='bus' else ('',)) for ri,d in zip(t.route_id,t.direction_id)]
 log('routes',len(r),'groups',r.g.nunique())
 
 # ---------- shapes ----------
-want={}
+want={}; NML={}
 for g,sub in t.dropna(subset=['shape_id']).groupby('g'):
     cnt=sub.shape_id.value_counts()
-    if g[0]=='bus': want[g]=[cnt.index[0]]
+    if g[0]=='bus':
+        mains=[cnt.index[0]]
+        want[g]=mains+[s for s,n in cnt.items() if s not in mains and n/cnt.sum()>=0.005][:4]; NML[g]=1
     else: want[g]=[s for s,n in cnt.items() if n/cnt.sum()>=0.02][:12] or [cnt.index[0]]
 allw=set(s for v in want.values() for s in v)
 pts=collections.defaultdict(list)
@@ -81,8 +85,11 @@ st=pd.read_csv(zf.open('stop_times.txt'),encoding='utf-8-sig',usecols=['trip_id'
 st=st[st.trip_id.isin(set(t.trip_id))]
 st=st[~((st.pickup_type=='1')&(st.drop_off_type=='1'))]
 st['q']=st.stop_sequence.astype(int); st['g']=st.trip_id.map(dict(zip(t.trip_id,t.g)))
+mainshape={g:set(v[:NML.get(g,len(v))]) for g,v in want.items()}
+t['ismain']=[sh in mainshape.get(g,()) for sh,g in zip(t.shape_id,t.g)]
+st['main']=st.trip_id.map(dict(zip(t.trip_id,t.ismain))).fillna(False).astype(int)
 st['len']=st.trip_id.map(st.groupby('trip_id').size())
-st=st.sort_values(['g','len','trip_id','q'],ascending=[True,False,True,True])
+st=st.sort_values(['g','main','len','trip_id','q'],ascending=[True,False,False,True,True])
 log('stop_times',len(st))
 S=[]; key={}; cache={}
 def sidx(sid,station):
@@ -95,22 +102,42 @@ def sidx(sid,station):
     k=(int(round(float(row.stop_lat)*1e5)),int(round(float(row.stop_lon)*1e5)),nm)
     if k not in key: key[k]=len(S); S.append(list(k))
     cache[ck]=key[k]; return key[k]
-SO={}
+SO={}; NM={}
 for g,sub in st.groupby('g',sort=False):
     stn=g[0]!='bus'
-    SO[g]=list(dict.fromkeys(sidx(x,stn) for x in sub.stop_id))
+    allst=list(dict.fromkeys(sidx(x,stn) for x in sub.stop_id))
+    m=sub[sub.main==1]
+    if g[0]=='bus' and len(m):
+        first=m.trip_id.iloc[0]
+        mains=list(dict.fromkeys(sidx(x,stn) for x in m[m.trip_id==first].stop_id))
+        rest_main=[x for x in dict.fromkeys(sidx(y,stn) for y in m.stop_id) if x not in set(mains)]
+        mains=mains+rest_main
+        SO[g]=mains+[x for x in allst if x not in set(mains)]; NM[g]=len(mains)
+    else: SO[g]=allst; NM[g]=len(allst)
 log('stops',len(S))
 
 # ---------- entities ----------
 trips=t.groupby('g').size(); E=[]
-order=sorted(r.g.unique(),key=lambda g:({'bus':3,'train':0,'lr':1,'ferry':2}[g[0]],g[2]))
+order=sorted(t.g.unique(),key=lambda g:({'bus':3,'train':0,'lr':1,'ferry':2}[g[0]],g[2],g[4],g[5]))
+rsub={g:sub for g,sub in r.groupby('g')}
+hs=t.groupby('g').trip_headsign.agg(lambda x:x.value_counts().index[0] if x.notna().any() else '') if 'trip_headsign' in t else {}
+def short(n): 
+    n=re.sub(r' (Station|Interchange|Light Rail|Wharf)?,? ?(Stand|Platform|Side) [A-Z0-9]+$','',str(n)); return n.split(',')[0].replace(' Station','')
 for g in order:
-    mode,cat,code,name,_=g; sub=r[r.g==g]
-    lines=[line(x,0.00025 if mode=='bus' else 0.00005) for x in want.get(g,[]) if x in pts]
+    mode,cat,code,name,_,dirn=g; sub=rsub[g[:5]]
+    if mode=='bus' and SO.get(g):
+        o_=SO[g]; first=S[o_[0]][2]; last=S[o_[NM.get(g,len(o_))-1]][2]
+        dest=hs.get(g,'') if hasattr(hs,'get') else ''
+        others=[x for x in hs.index if x[:5]==g[:5] and x!=g] if hasattr(hs,'index') else []
+        orig=hs.get(others[0],'') if others else ''
+        if not orig or orig==dest: orig=short(first)
+        name=f"{orig} to {dest or short(last)}"
+        name+=f"  ·  {g[3]}" if False else ''
+    lines=[line(x,(0.00025 if i==0 else 0.0004) if mode=='bus' else 0.00005) for i,x in enumerate(want.get(g,[])) if x in pts]
     if not lines: continue
     o=SO.get(g,[]); col=sub.route_color.dropna()
     E.append([mode,code,name,', '.join(sorted(set(sub.agency_name.dropna()))),cat,(sub.route_desc.iloc[0] if mode=='bus' else ''),int(trips.get(g,0)),lines,
-              ([o[0]]+[b-a for a,b in zip(o,o[1:])]) if o else [],'#'+col.iloc[0] if len(col) and mode!='bus' else '',1 if code in UNSURE else 0])
+              ([o[0]]+[b-a for a,b in zip(o,o[1:])]) if o else [],'#'+col.iloc[0] if len(col) and mode!='bus' else '',1 if code in UNSURE else 0,NM.get(g,len(o)),NML.get(g,len(lines)),(g[4] if mode=='bus' else '')+'|'+g[3]])
 feed=dt.date.today().strftime('%-d %b %Y')
 try:
     fi=rd('feed_info.txt'); feed=dt.datetime.strptime(fi.feed_start_date.iloc[0],'%Y%m%d').strftime('%-d %b %Y')

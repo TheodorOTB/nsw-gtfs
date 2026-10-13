@@ -66,7 +66,7 @@ const MODES={
 const PAYTXT={'Full Opal':'Opal fares, caps and transfer discounts apply','Opal Pay':'Tap your Opal card to pay the operator\'s own fare — no Opal caps or discounts','No Opal payment':'Opal not accepted — pay the operator directly'};
 function dec(s){let i=0,la=0,lo=0,o=[];while(i<s.length){for(const k of[0,1]){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);const d=r&1?~(r>>1):r>>1;if(k)lo+=d;else la+=d}o.push([la/1e5,lo/1e5])}return o}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const E=D.E.map((x,i)=>({i,m:x[0],c:x[1]||'',n:x[2]||'',o:x[3]||'',k:x[4],net:x[5],t:x[6],l:x[7],s:x[8],col:x[9],u:x[10],key:((x[1]||'')+' '+x[2]+' '+x[3]+' '+x[5]+' '+x[4]).toLowerCase()}));
+const E=D.E.map((x,i)=>({i,m:x[0],c:x[1]||'',n:x[2]||'',o:x[3]||'',k:x[4],net:x[5],t:x[6],l:x[7],s:x[8],col:x[9],u:x[10],nm:x[11]||0,ml:x[12]||1,rid:x[13]||String(i),key:((x[1]||'')+' '+x[2]+' '+x[3]+' '+x[5]+' '+x[4]).toLowerCase()}));
 const SLL=D.S.map(s=>[s[0]/1e5,s[1]/1e5]);
 const catCol={};Object.values(MODES).forEach(m=>m.cats.forEach(c=>catCol[c[0]]=c[1]));
 function colOf(e){const M=MODES[e.m];return M.lineByCat?catCol[e.k]:(e.col&&e.col!=='#777777'?e.col:catCol[e.k])}
@@ -87,11 +87,11 @@ L.control.layers(BASE,null,{position:'topright'}).addTo(map);
 const rend=L.canvas({padding:.4,tolerance:6});
 const lines={};
 function lineOf(e,tab){const k=e.i;if(!lines[k]){const c=colOf(e),w=e.m==='bus'?(e.k==='School bus'?1.4:2):3.2;
- lines[k]=L.layerGroup(e.l.map(s=>L.polyline(dec(s),{renderer:rend,color:c,weight:w,opacity:.9}).on('click',ev=>{L.DomEvent.stop(ev);select(e,false,ev.latlng)})))}return lines[k]}
+ lines[k]=L.layerGroup((e.m==='bus'?e.l.slice(0,e.ml):e.l).map(s=>L.polyline(dec(s),{renderer:rend,color:c,weight:w,opacity:.9}).on('click',ev=>{L.DomEvent.stop(ev);select(e,false,ev.latlng)})))}return lines[k]}
 const shown=L.layerGroup().addTo(map);
 function pop(e){let s=`<b style="font-size:15px">${esc(e.c)}</b> ${esc(e.n)}<br><span style="color:${colOf(e)};font-weight:700">${esc(e.m==='lr'?'Light rail · '+e.k:e.k)}</span><br>${esc(e.o)}`;
  if(e.m==='ferry')s+=`<br><span class="pay" style="background:${catCol[e.k]}">${esc(e.k)}</span> <span style="font-size:12px">${PAYTXT[e.k]}${e.u?' (check with the operator)':''}</span>`;
- if(e.net)s+=`<br><span style="color:#888">${esc(e.net)}</span>`;return s+`<br><span style="color:#888">${e.t} trips in timetable · ${stopsOf(e).length} stops</span>`}
+ if(e.net)s+=`<br><span style="color:#888">${esc(e.net)}</span>`;return s+`<br><span style="color:#888">${e.t} trips in timetable · ${e.nm||stopsOf(e).length} stops${e.nm&&e.nm<stopsOf(e).length?' (+'+(stopsOf(e).length-e.nm)+' on some trips)':''}</span>`}
 function stopsOf(e){const o=[];let v=0;e.s.forEach((x,k)=>{v=k?v+x:x;o.push(v)});return o}
 let atStop=null;function routesAt(si){if(!atStop){atStop=new Map();E.forEach(e=>stopsOf(e).forEach(s=>{let a=atStop.get(s);if(!a)atStop.set(s,a=[]);a.push(e.i)}))}return atStop.get(si)||[]}
 const MODEORD={train:0,lr:1,ferry:2,bus:3};
@@ -100,15 +100,15 @@ function stopPop(si){const rs=routesAt(si).map(i=>E[i]).sort((a,b)=>MODEORD[a.m]
 let hl=null,stopL=null,selE=null;
 function clearSel(){if(hl){map.removeLayer(hl);hl=null}if(stopL){map.removeLayer(stopL);stopL=null}selE=null;map.closePopup()}
 function select(e,zoom,at){clearSel();selE=e;const c=colOf(e);const lls=e.l.map(dec);
- hl=L.layerGroup(lls.flatMap(ll=>[L.polyline(ll,{renderer:rend,color:'#fff',weight:9,opacity:.9,interactive:false}),L.polyline(ll,{renderer:rend,color:c,weight:5,interactive:false})])).addTo(map);
- const ss=stopsOf(e);stopL=L.layerGroup(ss.map((si,k)=>L.circleMarker(SLL[si],{renderer:rend,radius:k===0||k===ss.length-1?6.5:5,color:c,weight:2.6,fillColor:'#fff',fillOpacity:1}).on('click',ev=>{L.DomEvent.stop(ev);L.popup().setLatLng(SLL[si]).setContent(stopPop(si)).openOn(map)}))).addTo(map);
+ hl=L.layerGroup(lls.flatMap((ll,j)=>j>=e.ml&&e.m==='bus'?[L.polyline(ll,{renderer:rend,color:c,weight:3,opacity:.75,dashArray:'6 6',interactive:false})]:[L.polyline(ll,{renderer:rend,color:'#fff',weight:9,opacity:.9,interactive:false}),L.polyline(ll,{renderer:rend,color:c,weight:5,interactive:false})])).addTo(map);
+ const ss=stopsOf(e),nmn=e.nm||ss.length;stopL=L.layerGroup(ss.map((si,k)=>L.circleMarker(SLL[si],k<nmn?{renderer:rend,radius:k===0||k===nmn-1?6.5:5,color:c,weight:2.6,fillColor:'#fff',fillOpacity:1}:{renderer:rend,radius:3.8,color:'#888',weight:2,fillColor:'#ddd',fillOpacity:1}).on('click',ev=>{L.DomEvent.stop(ev);L.popup().setLatLng(SLL[si]).setContent(stopPop(si)).openOn(map)}))).addTo(map);
  const b=L.latLngBounds([]);lls.forEach(ll=>ll.forEach(p=>b.extend(p)));
  if(zoom)fitTo(b);L.popup().setLatLng(at||lls[0][Math.floor(lls[0].length/2)]).setContent(pop(e)).openOn(map);
  const list=document.getElementById('list');list.innerHTML='';
- const h=document.createElement('div');h.className='sh';h.innerHTML=`<button>← All routes</button><span class="bd" style="background:${c}">${esc(e.c)}</span><b style="font-size:13px">${ss.length} stops</b>`;
+ const h=document.createElement('div');h.className='sh';h.innerHTML=`<button>← All routes</button><span class="bd" style="background:${c}">${esc(e.c)}</span><b style="font-size:13px">${nmn} stops</b>`;
  h.querySelector('button').onclick=()=>{clearSel();refresh()};list.appendChild(h);
  const nm=document.createElement('div');nm.style.cssText='font-size:12.5px;color:var(--muted);padding:0 8px 6px';nm.textContent=(e.n||e.k)+' · '+e.o;list.appendChild(nm);
- ss.forEach(si=>{const d=document.createElement('div');d.className='st';d.innerHTML=`<i style="border-color:${c}"></i><span>${esc(D.S[si][2])}</span>`;
+ ss.forEach((si,k)=>{if(k===nmn&&k<ss.length){const x=document.createElement('div');x.style.cssText='font:700 12px "Archivo Narrow",sans-serif;color:var(--muted);padding:12px 8px 4px';x.textContent=`Only on some trips (${ss.length-nmn} stops) — shown as grey dots and dashed lines`;list.appendChild(x)}const d=document.createElement('div');d.className='st';d.innerHTML=`<i style="border-color:${k<nmn?c:'#999'}"></i><span>${esc(D.S[si][2])}</span>`;
   d.onclick=()=>{map.setView(SLL[si],Math.max(map.getZoom(),16));L.popup().setLatLng(SLL[si]).setContent(stopPop(si)).openOn(map)};list.appendChild(d)});
  document.getElementById('count').textContent='Stops in order along the route'}
 window.pick=i=>{const e=E[i];if(!inTab(e,tab))setTab(e.m==='lr'&&tab==='train'?'train':e.m,true);select(e,true)};
@@ -119,7 +119,7 @@ Object.entries(MODES).forEach(([m,M])=>{const b=document.createElement('button')
 const q=document.getElementById('q'),sel=document.getElementById('net');
 function setTab(m,quiet){tab=m;clearSel();q.value='';[...tabsEl.children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));
  const M=MODES[m];document.getElementById('hint').textContent=M.hint;
- const tbox=document.getElementById('types');tbox.innerHTML='';const cnt={};E.forEach(e=>{if(inTab(e,m)){const k=catIn(e,m);cnt[k]=(cnt[k]||0)+1}});
+ const tbox=document.getElementById('types');tbox.innerHTML='';const cnt={},seen=new Set();E.forEach(e=>{if(inTab(e,m)&&!seen.has(e.rid)){seen.add(e.rid);const k=catIn(e,m);cnt[k]=(cnt[k]||0)+1}});
  M.cats.forEach(([c,col])=>{if(!cnt[c])return;const l=document.createElement('label');l.innerHTML=`<input type="checkbox" ${on[m][c]?'checked':''}><span class="sw" style="background:${col};border-color:${col}"></span>${c} <small>${cnt[c].toLocaleString()}</small>`;
   l.querySelector('input').onchange=ev=>{on[m][c]=ev.target.checked;refresh()};tbox.appendChild(l)});
  sel.style.display=M.net?'':'none';sel.innerHTML='<option value="">All networks</option>';if(M.net)[...new Set(E.filter(e=>e.m===m).map(e=>e.net))].sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o)});
@@ -128,10 +128,10 @@ let cur=[];
 function refresh(){if(selE)clearSel();const s=q.value.trim().toLowerCase(),nt=sel.value,toks=s.split(/\s+/).filter(Boolean);
  cur=E.filter(e=>inTab(e,tab)&&on[tab][catIn(e,tab)]&&(!nt||e.net===nt)&&toks.every(k=>e.key.includes(k)));
  shown.clearLayers();cur.forEach(e=>shown.addLayer(lineOf(e)));
- document.getElementById('count').textContent=`${cur.length.toLocaleString()} routes shown`;
+ {const u=new Set(cur.map(e=>e.rid)).size;document.getElementById('count').textContent=tab==='bus'?`${u.toLocaleString()} routes shown · each direction listed separately`:`${u.toLocaleString()} routes shown`}
  const list=document.getElementById('list');list.innerHTML='';
  const order=MODES[tab].cats.map(c=>c[0]);
- const sorted=cur.slice().sort((a,b)=>(a.c.toLowerCase()===s?0:1)-(b.c.toLowerCase()===s?0:1)||(tab==='bus'?0:order.indexOf(catIn(a,tab))-order.indexOf(catIn(b,tab)))||a.c.localeCompare(b.c,undefined,{numeric:true}));
+ const sorted=cur.slice().sort((a,b)=>(a.c.toLowerCase()===s?0:1)-(b.c.toLowerCase()===s?0:1)||(tab==='bus'?0:order.indexOf(catIn(a,tab))-order.indexOf(catIn(b,tab)))||a.c.localeCompare(b.c,undefined,{numeric:true})||a.rid.localeCompare(b.rid)||a.n.localeCompare(b.n));
  sorted.slice(0,200).forEach(e=>{const d=document.createElement('div');d.className='it';d.innerHTML=`<span class="bd" style="background:${colOf(e)}">${esc(e.c)}</span><span class="t">${esc(e.n||e.k)}<small>${esc(e.m==='ferry'?e.k+' · '+e.o:e.o)}</small></span>`;
   d.onclick=()=>select(e,true);list.appendChild(d)});
  if(sorted.length>200){const m=document.createElement('div');m.id='more';m.textContent=`+ ${(sorted.length-200).toLocaleString()} more. Type a route number, place or operator to narrow the list.`;list.appendChild(m)}}
