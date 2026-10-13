@@ -1,0 +1,226 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NSW Public Transport Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Archivo+Narrow:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--ink:#1c1e21;--muted:#6c6a63;--panel:#fffdf8;--line:#ddd7c9;--bg:#e8e6e0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ink:#ecebe6;--muted:#9b988f;--panel:#202327;--line:#34383e;--bg:#15171a}}
+:root[data-theme="dark"]{--ink:#ecebe6;--muted:#9b988f;--panel:#202327;--line:#34383e;--bg:#15171a}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:Archivo,"Helvetica Neue",Arial,sans-serif}
+#map{position:absolute;inset:0;background:var(--bg)}.leaflet-container{font-family:inherit}
+#panel{position:absolute;z-index:1000;left:12px;top:12px;bottom:12px;width:340px;background:var(--panel);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.16);overflow:hidden}
+header{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+h1{font:800 20px/1.05 Archivo,sans-serif;margin:0}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px;background:color-mix(in srgb,var(--line) 50%,transparent);padding:3px;border-radius:10px}
+.tabs button{font:700 12.5px Archivo,sans-serif;border:0;background:transparent;color:var(--muted);padding:7px 2px;border-radius:8px;cursor:pointer}
+.tabs button.on{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+#hint{margin:8px 0 0;color:var(--muted);font-size:12px;line-height:1.35}
+.types{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-top:9px}
+.types label{display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;user-select:none;line-height:1.15}
+.types input{display:none}.sw{width:14px;height:14px;border-radius:4px;flex:none;border:2px solid transparent}
+.types input:not(:checked)+.sw{background:transparent!important}.types small{color:var(--muted)}
+.row{display:flex;gap:6px;margin-top:9px}
+input[type=search],select{font:13px Archivo,sans-serif;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
+input[type=search]{flex:1}select{flex:1;max-width:50%}
+.btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.btns button,.sh button{font:600 12px Archivo,sans-serif;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:5px 10px;cursor:pointer}
+#count{font:700 12px "Archivo Narrow",sans-serif;color:var(--muted);padding:8px 14px 2px}
+#list{overflow-y:auto;flex:1;padding:2px 8px 10px}
+.it{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:8px;cursor:pointer}
+.it:hover,.it.sel{background:color-mix(in srgb,var(--line) 55%,transparent)}
+.bd{font:700 12.5px "Archivo Narrow",sans-serif;color:#fff;border-radius:6px;padding:3px 6px;min-width:40px;text-align:center;flex:none;white-space:nowrap}
+.it .t{font-size:12.5px;line-height:1.25}.it .t small{display:block;color:var(--muted);font-size:11px}
+#more{color:var(--muted);font-size:12px;padding:6px 10px}
+.sh{display:flex;align-items:center;gap:8px;padding:8px 8px 6px;position:sticky;top:0;background:var(--panel);z-index:2}
+.st{display:flex;gap:10px;align-items:flex-start;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;line-height:1.3}
+.st:hover{background:color-mix(in srgb,var(--line) 55%,transparent)}
+.st i{flex:none;width:9px;height:9px;border-radius:50%;background:#fff;border:2.5px solid;margin-top:3px}
+.leaflet-popup-content{font-family:Archivo,sans-serif;font-size:13px;line-height:1.4}
+.chips span{display:inline-block;font:700 11px "Archivo Narrow",sans-serif;color:#fff;border-radius:5px;padding:2px 5px;margin:3px 3px 0 0;cursor:pointer}
+.pay{display:inline-block;font:700 11px "Archivo Narrow",sans-serif;border-radius:5px;padding:2px 6px;color:#fff;margin-top:3px}
+#tog{display:none}
+.pk{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;border:2px solid var(--line);border-radius:6px;margin:0;cursor:pointer;display:grid;place-content:center;background:var(--panel)}
+.pk:checked{background:var(--ink);border-color:var(--ink)}.pk:checked::after{content:'';width:9px;height:5px;border:2.5px solid var(--panel);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.it.pkd{background:color-mix(in srgb,var(--line) 40%,transparent)}
+#pickbar{display:none;align-items:center;justify-content:space-between;gap:8px;margin:6px 8px 4px;padding:7px 10px;border-radius:9px;background:var(--ink);color:var(--panel);font:600 12.5px Archivo,sans-serif}
+#pickbar button{font:700 12px Archivo,sans-serif;border:0;border-radius:999px;padding:4px 10px;background:var(--panel);color:var(--ink);cursor:pointer}
+@media (max-width:720px){#panel{left:0;right:0;top:auto;bottom:0;width:auto;height:55%;border-radius:16px 16px 0 0}#panel.min{height:auto}#panel.min #list,#panel.min #count,#panel.min .types,#panel.min .row,#panel.min #hint,#panel.min .btns .x{display:none}#tog{display:inline-block}}
+</style></head><body>
+<div id="map"></div><div id="loading" style="display:none;position:absolute;z-index:1100;top:12px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font:600 13px Archivo,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.15)">Loading…</div>
+<aside id="panel"><header><h1>NSW public transport map</h1><div id="feedd" style="font-size:11.5px;color:var(--muted);margin-top:3px"></div>
+<div class="tabs" id="tabs"></div>
+<p id="hint"></p>
+<div class="types" id="types"></div>
+<div class="row"><input type="search" id="q" placeholder="Route, place or operator…"><select id="net"></select></div>
+<div class="btns"><button id="fit" class="x">Zoom to results</button><button id="clr" class="x">Clear</button><button id="tog">Hide panel</button></div>
+</header><div id="count"></div><div id="pickbar"><span id="picktxt"></span><span><button id="pickfit">Zoom</button> <button id="pickclr">Show all</button></span></div><div id="list"></div></aside>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const FEED='__FEED__',VER='__VER__',BUILT='__BUILT__';
+const MODES={
+ bus:{label:'Buses',hint:'Routes sharing a road are merged into one line — tap it to see every route on that stretch. Tick routes in the list to show only those. School buses start hidden.',net:true,
+  cats:[['Regular bus','#0096d6',1],['Express bus','#0a4c8c',1],['Night bus','#5b46b3',1],['Rail replacement bus','#e2531f',1],['Event & other temporary bus','#d1356f',1],['School bus','#e0a100',0],['TrainLink coach','#e57c12',1],['Temporary coach','#8a5b10',1],['Private coach','#6d6a64',1]]},
+ train:{label:'Trains',hint:'Sydney Trains, Metro, intercity and NSW TrainLink, plus light rail. Tap a line to see every service on that track. Tick lines in the list to show only those.',
+  cats:[['Sydney Trains','#f6891f',1],['Sydney Metro','#168388',1],['Intercity trains','#a6192e',1],['NSW TrainLink','#d15f12',1],['Light rail','#e4022d',1]]},
+ lr:{label:'Light rail',hint:'Sydney, Parramatta and Newcastle light rail. Tap a line to see every route on that track. Tick lines in the list to show only those.',
+  cats:[['L1 Inner West','#be1622',1],['L2 Randwick','#dd1e25',1],['L3 Juniors Kingsford','#781140',1],['L4 Parramatta','#e4572e',1],['NLR Newcastle','#ee343f',1],['LX Special events','#777',0]]},
+ ferry:{label:'Ferries',hint:"Sorted by how you can pay with Opal. Full Opal = Opal fares and benefits; Opal Pay = tap Opal to pay the operator's own fare (no Opal benefits).",byCat:true,
+  cats:[['Full Opal','#00774b',1],['Opal Pay','#1f78b4',1],['No Opal payment','#8a8a8a',1]]}};
+const PAYTXT={'Full Opal':'Opal fares, caps and transfer discounts apply','Opal Pay':"Tap your Opal card to pay the operator's own fare — no Opal caps or discounts",'No Opal payment':'Opal not accepted — pay the operator directly'};
+const BUSPRI=['Rail replacement bus','Express bus','Night bus','Regular bus','Event & other temporary bus','TrainLink coach','Temporary coach','Private coach','School bus'];
+const catCol={};Object.values(MODES).forEach(m=>m.cats.forEach(c=>catCol[c[0]]=c[1]));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function dec(s){let i=0,la=0,lo=0,o=[];while(i<s.length){for(const k of[0,1]){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);const d=r&1?~(r>>1):r>>1;if(k)lo+=d;else la+=d}o.push([la/1e5,lo/1e5])}return o}
+// ---------- data loading ----------
+const E=[];const loaded={};let S=null;const NETS={};
+const loadEl=document.getElementById('loading');
+function busy(on,msg){loadEl.style.display=on?'block':'none';if(msg)loadEl.textContent=msg}
+async function getJSON(n){const r=await fetch('data/'+n+'.json?v='+VER);if(!r.ok)throw new Error(n);return r.json()}
+async function ensure(name){if(loaded[name])return loaded[name];loaded[name]=(async()=>{busy(true,'Loading '+({school:'school buses',stops:'stops',geo_bus:'route details',geo_rail:'route details',geo_school:'school routes'}[name]||'map data')+'…');
+ const j=await getJSON(name);
+ if(name==='stops'){S=j.S}
+ else if(name.startsWith('geo_')){for(const id in j){const e=E[+id];if(e){e.l=j[id][0];e.s=j[id][1]}}}
+ else if(name.startsWith('net_')){NETS[name.slice(4)]=j.L.map((s,k)=>({s,c:j.C[k],ids:j.I[k],ll:null,cl:null,bb:null,v:null}))}
+ else j.E.forEach(x=>{const e={id:x[0],m:x[1],c:x[2]||'',n:x[3]||'',o:x[4]||'',k:x[5],net:x[6],t:x[7],l:x[8],s:x[9],col:x[10],u:x[11],nm:x[12],ml:x[13]||1,rid:x[14]};
+   e.key=(e.c+' '+e.n+' '+e.o+' '+e.net+' '+e.k).toLowerCase();E[e.id]=e});
+ busy(false)})();return loaded[name]}
+function colOf(e){return e.m==='bus'||MODES[e.m].byCat?catCol[e.k]:(e.col&&e.col!=='#777777'?e.col:catCol[e.k])}
+function inTab(e,t){return e.m===t||(t==='train'&&e.m==='lr')}
+function catIn(e,t){return t==='train'&&e.m==='lr'?'Light rail':e.k}
+const on={};Object.entries(MODES).forEach(([m,M])=>{on[m]={};M.cats.forEach(c=>on[m][c[0]]=!!c[2])});
+// ---------- map ----------
+const map=L.map('map',{preferCanvas:true,zoomControl:false,minZoom:5,maxZoom:18}).setView([-33.2,148.5],6);
+L.control.zoom({position:'topright'}).addTo(map);map.attributionControl.setPrefix('').addAttribution('Routes &amp; stops: Transport for NSW open data');
+const ESRI='https://server.arcgisonline.com/ArcGIS/rest/services/';
+const BASE={'OpenStreetMap':L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}),
+ 'Streets (Esri)':L.tileLayer(ESRI+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors'}),
+ 'Light grey (Esri)':L.tileLayer(ESRI+'Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'Basemap &copy; Esri'}),
+ 'Dark grey (Esri)':L.tileLayer(ESRI+'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'Basemap &copy; Esri'}),
+ 'Satellite (Esri)':L.tileLayer(ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Imagery &copy; Esri'})};
+const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+(dark?BASE['Dark grey (Esri)']:location.protocol.startsWith('http')?BASE['OpenStreetMap']:BASE['Streets (Esri)']).addTo(map);
+L.control.layers(BASE,null,{position:'topright'}).addTo(map);
+const rend=L.canvas({padding:.3,tolerance:4});
+const netLayer=L.layerGroup().addTo(map);
+// ---------- state ----------
+let tab='bus',cur=[],vis=new Set(),drawn=[];const picked=new Set();
+const pickedHere=()=>E.filter(e=>e&&picked.has(e.rid)&&inTab(e,tab));
+const q=document.getElementById('q'),sel=document.getElementById('net'),tabsEl=document.getElementById('tabs');
+function netsFor(t){return t==='bus'?(on.bus['School bus']?['bus','school']:['bus']):['rail']}
+function filesFor(t){return t==='bus'?(on.bus['School bus']?['bus','school','net_bus','net_school']:['bus','net_bus']):['rail','net_rail']}
+function wOf(n,rail){const b=rail?3.4:2.2;return n<=1?b:n<=3?b+1:n<=6?b+2:b+3}
+function segVis(){for(const nm of ['bus','school','rail']){const segs=NETS[nm];if(!segs)continue;for(const sg of segs){const v=sg.ids.filter(i=>vis.has(i));sg.v=v.length?v:null;
+  if(sg.v){if(tab==='bus'){let best=99;v.forEach(i=>{const p=BUSPRI.indexOf(E[i].k);if(p<best){best=p;sg.col=catCol[E[i].k]}})}else{let bt=-1;v.forEach(i=>{if(E[i].t>bt){bt=E[i].t;sg.col=colOf(E[i])}})}
+   sg.w=wOf(new Set(v.map(i=>E[i].rid)).size,tab!=='bus')}}}}
+const RANK=e=>({'Sydney Trains':0,'Sydney Metro':1,'Intercity trains':2,'NSW TrainLink':3}[e.k]??4)*1000+(parseInt(e.c.replace(/\D/g,''))||0);
+function railLines(sg){const by=new Map();sg.v.forEach(i=>{const e=E[i];const k=colOf(e);if(!by.has(k)||RANK(e)<RANK(by.get(k)))by.set(k,e)});return [...by.values()].sort((a,b)=>RANK(a)-RANK(b)||a.c.localeCompare(b.c))}
+function offsetLine(ll,px){const P=ll.map(p=>map.latLngToLayerPoint(p));const out=[];
+ for(let i=0;i<P.length;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)];let dx=b.x-a.x,dy=b.y-a.y;const L2=Math.hypot(dx,dy)||1;
+  out.push(map.layerPointToLatLng(L.point(P[i].x-dy/L2*px,P[i].y+dx/L2*px)))}return out}
+function bbOf(sg){if(!sg.bb){if(!sg.cl)sg.cl=dec(sg.c);let a=90,b=180,c=-90,d=-180;sg.cl.forEach(p=>{if(p[0]<a)a=p[0];if(p[0]>c)c=p[0];if(p[1]<b)b=p[1];if(p[1]>d)d=p[1]});sg.bb=[a,b,c,d]}return sg.bb}
+const noteEl=document.getElementById('loading');let noteT;
+function note(msg){noteEl.textContent=msg;noteEl.style.display='block';clearTimeout(noteT);noteT=setTimeout(()=>noteEl.style.display='none',2500)}
+let decN=0;function dropCache(){if(decN<60000)return;for(const nm in NETS)for(const sg of NETS[nm])sg.ll=null;decN=0}
+function drawNet(){dropCache();netLayer.clearLayers();drawn=[];const groups=new Map();const z=map.getZoom(),detail=z>=12;
+ const B=map.getBounds().pad(detail?0.35:0.15),s=B.getSouth(),w=B.getWest(),n=B.getNorth(),e=B.getEast();let skipped=false;
+ for(const nm of netsFor(tab)){const segs=NETS[nm];if(!segs)continue;
+  if(nm==='school'&&z<10){skipped=true;continue}
+  const tiny=z<9?0.006:z<11?0.002:0;
+  for(const sg of segs){if(!sg.v)continue;const bb=bbOf(sg);if(bb[2]<s||bb[0]>n||bb[3]<w||bb[1]>e)continue;if(tiny&&Math.max(bb[2]-bb[0],bb[3]-bb[1])<tiny)continue;
+   let ll;if(detail){if(!sg.ll){sg.ll=dec(sg.s);decN++}ll=sg.ll}else ll=sg.cl;
+   drawn.push({sg,ll});
+   if(tab==='bus'){const key=sg.col+'|'+sg.w;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(ll)}
+   else{const lines=railLines(sg),n=lines.length,gap=Math.min(4.2,Math.max(2.4,z-8.5));
+    lines.forEach((e,i)=>{const off=(i-(n-1)/2)*gap;const pl=off?offsetLine(ll,off):ll;const key=colOf(e)+'|3';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(pl)})}}}
+ [...groups.entries()].sort((a,b)=>+a[0].split('|')[1]-+b[0].split('|')[1]).forEach(([k,parts])=>{const [c,w]=k.split('|');
+  L.polyline(parts,{renderer:rend,color:c,weight:+w,opacity:selE?.25:.9,interactive:false,lineCap:'round',lineJoin:'round',smoothFactor:1.5}).addTo(netLayer)});
+ if(skipped)note('Zoom in to see school buses');
+ buildIndex()}
+let mvT;map.on('moveend',()=>{clearTimeout(mvT);mvT=setTimeout(drawNet,120)});map.on('zoomend',()=>{if(tab!=='bus'){clearTimeout(mvT);mvT=setTimeout(drawNet,60)}});
+// spatial index for tapping lines
+let IDX=new Map();const CS=0.004;
+function buildIndex(){IDX=new Map();drawn.forEach((d,k)=>{const ll=d.ll;for(let i=0;i<ll.length;i++){const p=ll[i],q2=ll[i+1]||p;
+  const n=Math.max(1,Math.ceil(Math.max(Math.abs(q2[0]-p[0]),Math.abs(q2[1]-p[1]))/CS));
+  for(let j=0;j<=n;j++){const la=p[0]+(q2[0]-p[0])*j/n,lo=p[1]+(q2[1]-p[1])*j/n;const key=Math.floor(la/CS)+','+Math.floor(lo/CS);let a=IDX.get(key);if(!a)IDX.set(key,a=new Set());a.add(k)}}})}
+function nearest(latlng){const cy=Math.floor(latlng.lat/CS),cx=Math.floor(latlng.lng/CS);const cand=new Set();
+ for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=IDX.get((cy+i)+','+(cx+j));if(a)a.forEach(x=>cand.add(x))}
+ const P=map.latLngToContainerPoint(latlng);let best=null,bd=14;
+ cand.forEach(k=>{const ll=drawn[k].ll;for(let i=0;i<ll.length-1;i++){const A=map.latLngToContainerPoint(ll[i]),B=map.latLngToContainerPoint(ll[i+1]);
+  const dx=B.x-A.x,dy=B.y-A.y,L2=dx*dx+dy*dy;let t=L2?((P.x-A.x)*dx+(P.y-A.y)*dy)/L2:0;t=Math.max(0,Math.min(1,t));const d=Math.hypot(A.x+t*dx-P.x,A.y+t*dy-P.y);if(d<bd){bd=d;best=k}}});
+ return best===null?null:drawn[best].sg}
+map.on('click',ev=>{if(selE)return;const sg=nearest(ev.latlng);if(!sg)return;
+ const v=sg.ids.filter(i=>vis.has(i)).map(i=>E[i]);const by=new Map();v.forEach(e=>{const k=e.rid;if(!by.has(k))by.set(k,e)});
+ const rs=[...by.values()].sort((a,b)=>a.c.localeCompare(b.c,undefined,{numeric:true}));
+ L.popup().setLatLng(ev.latlng).setContent(`<b>${rs.length} route${rs.length==1?'':'s'} use this stretch</b><div class="chips">${rs.map(e=>`<span style="background:${colOf(e)}" onclick="showRoute(${e.id})" title="${esc(e.n)}">${esc(e.c)}</span>`).join('')}</div><div style="color:#888;font-size:11.5px;margin-top:4px">Tap a route to see it</div>`).openOn(map)});
+window.showRoute=id=>{const e=E[id];map.closePopup();const sib=E.filter(x=>x&&x.rid===e.rid&&inTab(x,tab));if(sib.length===1){select(e,true);return}
+ q.value=e.c;refresh();const it=document.querySelectorAll('.it');if(it.length)it[0].scrollIntoView({block:'nearest'})};
+// ---------- selection ----------
+function stopsOf(e){const o=[];let v=0;e.s.forEach((x,k)=>{v=k?v+x:x;o.push(v)});return o}
+let atStop=null;
+let atN=0;async function routesAt(si){await Promise.all(['geo_bus','geo_rail'].concat(loaded.school?['geo_school']:[]).map(ensure));const n=E.filter(Boolean).length+Object.keys(loaded).length;if(!atStop||n!==atN){atN=n;atStop=new Map();E.forEach(e=>{if(e)stopsOf(e).forEach(s=>{let a=atStop.get(s);if(!a)atStop.set(s,a=[]);a.push(e.id)})})}return atStop.get(si)||[]}
+const MODEORD={train:0,lr:1,ferry:2,bus:3};
+async function stopPop(si,ll){const p=L.popup().setLatLng(ll).setContent(`<b>${esc(S[si][2])}</b><div style="color:#888">Finding routes…</div>`).openOn(map);
+ const rs=(await routesAt(si)).map(i=>E[i]).sort((a,b)=>MODEORD[a.m]-MODEORD[b.m]||a.c.localeCompare(b.c,undefined,{numeric:true}));
+ const u=[];const seen=new Set();rs.forEach(e=>{if(!seen.has(e.rid)){seen.add(e.rid);u.push(e)}});
+ p.setContent(`<b>${esc(S[si][2])}</b><div class="chips">${u.slice(0,45).map(x=>`<span style="background:${colOf(x)}" onclick="pickAny(${x.id})" title="${esc(x.n)}">${esc(x.c)}</span>`).join('')}${u.length>45?` +${u.length-45} more`:''}</div><div style="color:#888;font-size:11.5px;margin-top:4px">${u.length} route${u.length==1?'':'s'} stop here · tap one to show it${loaded.school?'':' · school buses not included (switch them on to add)'}</div>`)}
+window.pickAny=async id=>{const e=E[id];const t=inTab(e,tab)?tab:(e.m==='lr'?'lr':e.m);if(t!==tab)await setTab(t,true);showRoute(id)};
+let hl=null,stopL=null,selE=null;
+function clearSel(){if(hl){map.removeLayer(hl);hl=null}if(stopL){map.removeLayer(stopL);stopL=null}selE=null;map.closePopup();netLayer.eachLayer(l=>l.setStyle({opacity:.9}))}
+function pop(e){let s=`<b style="font-size:15px">${esc(e.c)}</b> ${esc(e.n)}<br><span style="color:${colOf(e)};font-weight:700">${esc(e.m==='lr'?'Light rail · '+e.k:e.k)}</span><br>${esc(e.o)}`;
+ if(e.m==='ferry')s+=`<br><span class="pay" style="background:${catCol[e.k]}">${esc(e.k)}</span> <span style="font-size:12px">${PAYTXT[e.k]}${e.u?' (check with the operator)':''}</span>`;
+ if(e.net)s+=`<br><span style="color:#888">${esc(e.net)}</span>`;const all=stopsOf(e).length,nm=e.nm||all;
+ return s+`<br><span style="color:#888">${e.t} trips in timetable · ${nm} stops${nm<all?' (+'+(all-nm)+' on some trips)':''}</span>`}
+const geoOf=e=>'geo_'+(e.m!=='bus'?'rail':e.k==='School bus'?'school':'bus');
+async function select(e,zoom){await Promise.all([ensure('stops'),ensure(geoOf(e))]);clearSel();selE=e;netLayer.eachLayer(l=>l.setStyle({opacity:.25}));
+ const c=colOf(e),lls=e.l.map(dec),ml=e.m==='bus'?e.ml:lls.length;
+ hl=L.layerGroup(lls.flatMap((ll,j)=>j>=ml?[L.polyline(ll,{renderer:rend,color:c,weight:3,opacity:.75,dashArray:'6 6',interactive:false})]:[L.polyline(ll,{renderer:rend,color:'#fff',weight:9,opacity:.9,interactive:false}),L.polyline(ll,{renderer:rend,color:c,weight:5,interactive:false})])).addTo(map);
+ const ss=stopsOf(e),nmn=e.nm||ss.length;
+ stopL=L.layerGroup(ss.map((si,k)=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];return L.circleMarker(ll,k<nmn?{renderer:rend,radius:k===0||k===nmn-1?6.5:5,color:c,weight:2.6,fillColor:'#fff',fillOpacity:1}:{renderer:rend,radius:3.8,color:'#888',weight:2,fillColor:'#ddd',fillOpacity:1}).on('click',ev=>{L.DomEvent.stop(ev);stopPop(si,ll)})})).addTo(map);
+ const b=L.latLngBounds([]);lls.forEach(ll=>ll.forEach(p=>b.extend(p)));if(zoom)fitTo(b);
+ L.popup().setLatLng(lls[0][Math.floor(lls[0].length/2)]).setContent(pop(e)).openOn(map);
+ const list=document.getElementById('list');list.innerHTML='';
+ const h=document.createElement('div');h.className='sh';h.innerHTML=`<button>← All routes</button><span class="bd" style="background:${c}">${esc(e.c)}</span><b style="font-size:13px">${nmn} stops</b>`;
+ h.querySelector('button').onclick=()=>{clearSel();refresh()};list.appendChild(h);
+ const nm=document.createElement('div');nm.style.cssText='font-size:12.5px;color:var(--muted);padding:0 8px 6px';nm.textContent=(e.n||e.k)+' · '+e.o;list.appendChild(nm);
+ ss.forEach((si,k)=>{if(k===nmn&&k<ss.length){const x=document.createElement('div');x.style.cssText='font:700 12px "Archivo Narrow",sans-serif;color:var(--muted);padding:12px 8px 4px';x.textContent=`Only on some trips (${ss.length-nmn} stops) — grey dots and dashed lines`;list.appendChild(x)}
+  const d=document.createElement('div');d.className='st';d.innerHTML=`<i style="border-color:${k<nmn?c:'#999'}"></i><span>${esc(S[si][2])}</span>`;
+  d.onclick=()=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];map.setView(ll,Math.max(map.getZoom(),16));stopPop(si,ll)};list.appendChild(d)});
+ document.getElementById('count').textContent='Stops in order along the route'}
+function fitTo(b){if(!b.isValid())return;const m=innerWidth<=720;map.fitBounds(b,{paddingTopLeft:[m?20:370,20],paddingBottomRight:[20,m?Math.round(document.getElementById('panel').offsetHeight)+20:20],maxZoom:15})}
+// ---------- UI ----------
+Object.entries(MODES).forEach(([m,M])=>{const b=document.createElement('button');b.textContent=M.label;b.dataset.m=m;b.onclick=()=>setTab(m);tabsEl.appendChild(b)});
+async function setTab(m,quiet){tab=m;clearSel();q.value='';[...tabsEl.children].forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+ await Promise.all(filesFor(m).map(ensure));const M=MODES[m];document.getElementById('hint').textContent=M.hint;
+ const tbox=document.getElementById('types');tbox.innerHTML='';const cnt={},seen=new Set();E.forEach(e=>{if(e&&inTab(e,m)&&!seen.has(e.rid)){seen.add(e.rid);const k=catIn(e,m);cnt[k]=(cnt[k]||0)+1}});
+ if(m==='bus'&&!loaded.school)cnt['School bus']=8634;
+ M.cats.forEach(([c,col])=>{if(!cnt[c])return;const l=document.createElement('label');l.innerHTML=`<input type="checkbox" ${on[m][c]?'checked':''}><span class="sw" style="background:${col};border-color:${col}"></span>${c} <small>${cnt[c].toLocaleString()}</small>`;
+  l.querySelector('input').onchange=async ev=>{on[m][c]=ev.target.checked;if(ev.target.checked)await Promise.all(filesFor(m).map(ensure));refresh()};tbox.appendChild(l)});
+ sel.style.display=M.net?'':'none';sel.innerHTML='<option value="">All networks</option>';if(M.net)[...new Set(E.filter(e=>e&&e.m===m).map(e=>e.net))].sort().forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o)});
+ refresh();if(!quiet){if(m==='bus'||m==='train')map.fitBounds([[-37.5,141],[-28.2,153.6]],{paddingTopLeft:[innerWidth<=720?10:360,10],paddingBottomRight:[10,innerWidth<=720?Math.round(innerHeight*.55):10]});else fitTo(L.latLngBounds([[-34.08,150.98],[-33.55,151.32]]))}}
+function applyVis(){const ph=pickedHere();vis=new Set((ph.length?ph:cur).map(e=>e.id));segVis();drawNet();
+ const bar=document.getElementById('pickbar');if(ph.length){const u=[...new Set(ph.map(e=>e.c))];bar.style.display='flex';document.getElementById('picktxt').textContent=`Showing only ${u.length===1?u[0]:u.slice(0,-1).join(', ')+' & '+u[u.length-1]}`}else bar.style.display='none'}
+function refresh(){if(selE)clearSel();const s=q.value.trim().toLowerCase(),nt=sel.value,toks=s.split(/\s+/).filter(Boolean);
+ cur=E.filter(e=>e&&inTab(e,tab)&&on[tab][catIn(e,tab)]&&(!nt||e.net===nt)&&toks.every(k=>e.key.includes(k)||e.c.toLowerCase()===k));applyVis();
+ const u=new Set(cur.map(e=>e.rid)).size;document.getElementById('count').textContent=tab==='bus'?`${u.toLocaleString()} routes shown · each direction listed separately`:`${u.toLocaleString()} routes shown`;
+ const list=document.getElementById('list');list.innerHTML='';const order=MODES[tab].cats.map(c=>c[0]);
+ const sorted=cur.slice().sort((a,b)=>(a.c.toLowerCase()===s?0:1)-(b.c.toLowerCase()===s?0:1)||(tab==='bus'?0:order.indexOf(catIn(a,tab))-order.indexOf(catIn(b,tab)))||a.c.localeCompare(b.c,undefined,{numeric:true})||String(a.rid).localeCompare(String(b.rid))||a.n.localeCompare(b.n));
+ sorted.slice(0,200).forEach(e=>{const d=document.createElement('div');d.className='it'+(picked.has(e.rid)?' pkd':'');d.innerHTML=`<input type="checkbox" class="pk" title="Show this line on the map with others you tick" ${picked.has(e.rid)?'checked':''}><span class="bd" style="background:${colOf(e)}">${esc(e.c)}</span><span class="t">${esc(e.n||e.k)}<small>${esc(e.m==='ferry'?e.k+' · '+e.o:e.o)}</small></span>`;
+  const cb=d.querySelector('.pk');cb.onclick=ev=>{ev.stopPropagation();if(cb.checked)picked.add(e.rid);else picked.delete(e.rid);
+   document.querySelectorAll('.it').forEach(x=>{const k=x.dataset.rid;if(k===String(e.rid)){x.classList.toggle('pkd',cb.checked);x.querySelector('.pk').checked=cb.checked}});if(selE)clearSel();applyVis()};
+  d.dataset.rid=e.rid;d.onclick=()=>select(e,true);list.appendChild(d)});
+ if(sorted.length>200){const mm=document.createElement('div');mm.id='more';mm.textContent=`+ ${(sorted.length-200).toLocaleString()} more. Type a route number, place or operator to narrow the list.`;list.appendChild(mm)}}
+document.getElementById('pickclr').onclick=()=>{pickedHere().forEach(e=>picked.delete(e.rid));refresh()};
+document.getElementById('pickfit').onclick=async()=>{const ph=pickedHere();await Promise.all([...new Set(ph.map(geoOf))].map(ensure));const b=L.latLngBounds([]);ph.forEach(e=>e.l.slice(0,1).forEach(s=>dec(s).forEach(p=>b.extend(p))));fitTo(b)};
+let tm;q.oninput=()=>{clearTimeout(tm);tm=setTimeout(refresh,300)};sel.onchange=refresh;
+document.getElementById('fit').onclick=async()=>{await Promise.all([...new Set(cur.slice(0,3000).map(geoOf))].map(ensure));const b=L.latLngBounds([]);cur.slice(0,3000).forEach(e=>e.l.slice(0,1).forEach(s=>{const ll=dec(s);b.extend(ll[0]);b.extend(ll[ll.length-1])}));fitTo(b)};
+document.getElementById('clr').onclick=()=>{q.value='';sel.value='';clearSel();refresh()};
+const P=document.getElementById('panel'),T=document.getElementById('tog');T.onclick=()=>{P.classList.toggle('min');T.textContent=P.classList.contains('min')?'Show panel':'Hide panel'};
+function ago(ms){const m=Math.round(ms/60000);if(m<1)return 'just now';if(m<60)return m+' min ago';const h=Math.floor(m/60);if(h<24)return h+' hr'+(h>1?'s':'')+' ago';const d=Math.floor(h/24);return d+' day'+(d>1?'s':'')+' ago'}
+function clock(){const b=new Date(BUILT);const f=new Intl.DateTimeFormat(undefined,{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+ document.getElementById('feedd').innerHTML=`🕒 Updated <b>${f.format(b)}</b> (${ago(Date.now()-b)}) · timetable from Transport for NSW`}
+clock();setInterval(clock,60000);
+setTab('bus').catch(err=>{busy(true,'Could not load the map data. Refresh to try again.');console.error(err)});
+
+</script></body></html>
