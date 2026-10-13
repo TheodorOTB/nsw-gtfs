@@ -5,6 +5,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
 jobs:
   fetch:
     runs-on: ubuntu-latest
@@ -34,3 +36,25 @@ jobs:
         run: |
           gh release view latest -R ${{ github.repository }} || gh release create latest -R ${{ github.repository }} --title "Latest NSW GTFS" --notes "Auto-updated daily"
           gh release upload latest out/* --clobber -R ${{ github.repository }}
+  map:
+    needs: fetch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tools
+        run: pip install pandas numpy shapely
+      - name: Get the timetable just downloaded
+        run: curl -sSfL --retry 3 -o gtfs.zip "https://github.com/${{ github.repository }}/releases/download/latest/gtfs.zip"
+      - name: Build the map
+        run: python3 build_map.py gtfs.zip site/index.html template.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
