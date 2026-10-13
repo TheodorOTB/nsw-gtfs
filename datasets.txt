@@ -1,0 +1,8 @@
+# file-name  download-address
+gtfs.zip https://api.transport.nsw.gov.au/v1/publictransport/timetables/complete/gtfs
+gtfs_buses.zip https://api.transport.nsw.gov.au/v1/gtfs/schedule/buses
+gtfs_sydneyferries.zip https://api.transport.nsw.gov.au/v1/gtfs/schedule/ferries/sydneyferries
+gtfs_nswtrains.zip https://api.transport.nsw.gov.au/v1/gtfs/schedule/nswtrains
+gtfs_sydneytrains.zip https://api.transport.nsw.gov.au/v2/gtfs/schedule/sydneytrains
+gtfs_metro.zip https://api.transport.nsw.gov.au/v2/gtfs/schedule/metro
+alerts.pb https://api.transport.nsw.gov.au/v2/gtfs/alerts/all
