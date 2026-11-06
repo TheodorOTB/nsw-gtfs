@@ -21,7 +21,7 @@ def enc(coords):
         pl,pn=la,lo
     return ''.join(out)
 
-r=rd('routes.txt'); a=rd('agency.txt'); t=rd('trips.txt',usecols=['route_id','shape_id','trip_id','direction_id','trip_headsign'])
+r=rd('routes.txt'); a=rd('agency.txt'); t=rd('trips.txt',usecols=['route_id','shape_id','trip_id','direction_id','trip_headsign','service_id'])
 r=r.merge(a[['agency_id','agency_name']],on='agency_id',how='left')
 r=r[r.route_type.isin(['700','712','714','204','205','2','106','401','900','4'])].copy()
 
@@ -93,7 +93,7 @@ log('rail paths chosen')
 
 # ---------- stops ----------
 s=rd('stops.txt',usecols=['stop_id','stop_name','stop_lat','stop_lon','parent_station']).set_index('stop_id')
-st=pd.read_csv(zf.open('stop_times.txt'),encoding='utf-8-sig',usecols=['trip_id','stop_id','stop_sequence','pickup_type','drop_off_type'],dtype=str)
+st=pd.read_csv(zf.open('stop_times.txt'),encoding='utf-8-sig',usecols=['trip_id','stop_id','stop_sequence','pickup_type','drop_off_type','arrival_time','departure_time'],dtype=str)
 st=st[st.trip_id.isin(set(t.trip_id))]
 st=st[~((st.pickup_type=='1')&(st.drop_off_type=='1'))]
 st['q']=st.stop_sequence.astype(int); st['g']=st.trip_id.map(dict(zip(t.trip_id,t.g)))
@@ -173,6 +173,7 @@ def build_network(items, step=0.00018):
         if len(c)<2: continue
         a=np.minimum(c[:-1],c[1:]); b=np.maximum(c[:-1],c[1:])
         ca.append(a); cb.append(b); eids.append(np.full(len(a),eid))
+    if not cell_all or not ca: return []
     cells=pd.concat(cell_all).groupby('c')[['x','y']].mean()
     ed=pd.DataFrame({'a':np.concatenate(ca),'b':np.concatenate(cb),'e':np.concatenate(eids)}).drop_duplicates()
     sig=ed.groupby(['a','b']).e.agg(lambda s:tuple(sorted(s))).reset_index()
@@ -219,6 +220,48 @@ def net_for(sel):
         ls=LineString(coords)
         L.append(enc(ls.simplify(0.0001).coords)); C.append(enc(ls.simplify(0.0015).coords)); I.append(ids)
     return dict(L=L,C=C,I=I)
+# ---------- departures: every scheduled time for each route at each of its stops ----------
+def build_departures(outdir):
+    log('departures')
+    os.makedirs(outdir+'/data/dep',exist_ok=True)
+    cal=rd('calendar.txt'); cdt=rd('calendar_dates.txt')
+    P=lambda x: dt.date(int(x[:4]),int(x[4:6]),int(x[6:]))
+    alld=list(cal.start_date)+list(cal.end_date)+list(cdt.date)
+    D0=P(min(alld)); D1=P(max(alld)); ND=(D1-D0).days+1
+    WD=['monday','tuesday','wednesday','thursday','friday','saturday','sunday']
+    used=set(t.service_id.dropna()); bits={}
+    for r_ in cal.to_dict('records'):
+        if r_['service_id'] not in used: continue
+        b=bytearray(b'0'*ND); a_,z_=P(r_['start_date']),P(r_['end_date'])
+        for k in range(ND):
+            d=D0+dt.timedelta(k)
+            if a_<=d<=z_ and r_[WD[d.weekday()]]=='1': b[k]=49
+        bits[r_['service_id']]=b
+    for sid,date,ex in zip(cdt.service_id,cdt.date,cdt.exception_type):
+        if sid not in used: continue
+        b=bits.setdefault(sid,bytearray(b'0'*ND)); k=(P(date)-D0).days
+        if 0<=k<ND: b[k]=49 if ex=='1' else 48
+    SV=sorted(bits); SVI={x:i for i,x in enumerate(SV)}
+    json.dump({'d0':D0.isoformat(),'n':ND,'v':[bits[x].decode() for x in SV]},open(outdir+'/data/dep/cal.json','w'),separators=(',',':'))
+    EGI={g:i for i,g in enumerate(EG)}
+    tm=st.departure_time.fillna(st.arrival_time).fillna('0:0:0').str.split(':',expand=True).astype(int)
+    st['m']=tm[0]*60+tm[1]
+    st['si']=[sidx(x,g[0]!='bus') for x,g in zip(st.stop_id,st.g)]
+    tinfo=dict(zip(t.trip_id,zip(t.service_id,t.trip_headsign.fillna(''))))
+    files=0; total=0
+    for g,sub in st.groupby('g',sort=False):
+        if g not in EGI: continue
+        o=SO[g]; pos={x:k for k,x in enumerate(o)}; H={}; rowsout=set()
+        for tid,ts in sub.sort_values(['trip_id','q']).groupby('trip_id',sort=False):
+            sv,hs=tinfo.get(tid,(None,''))
+            if sv not in SVI: continue
+            flat=[SVI[sv],H.setdefault(hs,len(H))]
+            for x,m in zip(ts.si.values,ts.m.values): flat+= [pos[x],int(m)]
+            rowsout.add(tuple(flat))
+        json.dump({'h':list(H),'t':sorted(rowsout,key=lambda r:(r[3] if len(r)>3 else 0))},open(f"{outdir}/data/dep/{EGI[g]}.json",'w'),separators=(',',':'))
+        files+=1; total+=len(rowsout)
+    log('departure files',files,'trips',total)
+
 import os
 outdir=os.path.dirname(OUT) or '.'; os.makedirs(outdir+'/data',exist_ok=True)
 def dump(name,obj):
@@ -233,6 +276,7 @@ for nm,f in (('rail',isr),('bus',isbus),('school',issch)):
 GRID=0.0008
 parts=[net_for(lambda e,m=m:e[0] in m) for m in (('train',),('lr',),('ferry',))]   # never merge across modes
 dump('net_rail',dict(L=sum((p['L'] for p in parts),[]),C=sum((p['C'] for p in parts),[]),I=sum((p['I'] for p in parts),[])))
+build_departures(outdir)
 GRID=0.0005; dump('net_bus',net_for(lambda e:isb(e) and not issch(e)))
 dump('net_school',net_for(issch))
 html=open(sys.argv[3] if len(sys.argv)>3 else 'template.html').read().replace('__FEED__',feed).replace('__VER__',dt.datetime.now(dt.timezone.utc).strftime('%Y%m%d%H%M')).replace('__BUILT__',dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))

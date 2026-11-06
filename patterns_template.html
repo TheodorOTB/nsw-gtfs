@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NSW rail and ferry stopping patterns and timetables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#FBFCFC;--ink:#1E2329;--muted:#5D6670;--rule:#DDE2E6;--band:#EEF1F3;--sel:#E4ECF5;--hov:rgba(110,130,150,.16);--line:#D11F2F;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15191D;--ink:#E8ECEF;--muted:#9AA4AD;--rule:#2E363D;--band:#1F252A;--sel:#24303C;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15191D;--ink:#E8ECEF;--muted:#9AA4AD;--rule:#2E363D;--band:#1F252A;--sel:#24303C;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:1100px;margin:0 auto;padding:28px 18px 60px}
+h1{font-weight:800;font-size:clamp(26px,5vw,40px);line-height:1.05;margin:0 0 6px;letter-spacing:-0.01em}
+.sub{color:var(--muted);margin:0 0 22px;font-size:15px;max-width:70ch}
+.lines{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.lines button{font:inherit;font-size:14px;font-weight:600;border:2px solid var(--c);background:transparent;color:var(--ink);padding:7px 12px 7px 10px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.lines button .code{background:var(--c);color:#fff;border-radius:4px;padding:1px 6px;font-size:12px;font-weight:800}
+.lines button[aria-pressed="true"]{background:var(--c);color:#fff}
+.lines button[aria-pressed="true"] .code{background:#fff;color:var(--c)}
+button:focus-visible{outline:3px solid var(--line);outline-offset:2px}
+.meta{font-size:13px;color:var(--muted);margin:0 0 8px}
+.grid{display:flex;border-top:2px solid var(--line)}
+.names{flex:0 0 172px}
+.scroll{overflow-x:auto;flex:1;min-width:0}
+svg text{font-family:inherit}
+#tt{margin-top:28px;border-top:2px solid var(--line);padding-top:16px}
+#tt[hidden]{display:none}
+#tt h2{font-size:20px;font-weight:800;margin:0 0 4px}
+.dirs{display:flex;gap:8px;margin:12px 0}
+.dirs button{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer}
+.dirs button[aria-pressed="true"]{border-color:var(--line);box-shadow:inset 0 -3px 0 var(--line)}
+.tw{overflow-x:auto;border:1px solid var(--rule);border-radius:6px}
+table{border-collapse:separate;border-spacing:0;font-size:13px}
+th,td{padding:4px 9px;white-space:nowrap;border-bottom:1px solid var(--rule)}
+thead th{font-weight:600;font-size:11px;color:var(--muted);vertical-align:bottom;white-space:normal;min-width:62px;max-width:90px;line-height:1.25;text-align:left;background:var(--bg)}
+tbody th{position:sticky;left:0;background:var(--bg);text-align:left;font-weight:600;z-index:1;border-right:1px solid var(--rule)}
+thead th:first-child{position:sticky;left:0;z-index:2}
+td{text-align:right}
+tr.hl th,tr.hl td{background:var(--sel)}
+tbody tr:first-child td,tbody tr:last-child td{font-weight:800}
+.ctl{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.ctl button{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--rule);background:transparent;color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer}
+.ctl button[aria-pressed="true"]{border-color:var(--line);box-shadow:inset 0 -3px 0 var(--line)}
+#scroll g.col>rect.bg{fill:transparent}
+#scroll g.col:hover>rect.bg{fill:var(--band)}
+#scroll g.col.on>rect.bg{fill:var(--sel)}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:13px;color:var(--muted);margin:0 0 10px}
+.key span{display:inline-flex;align-items:center;gap:6px}
+.brs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-6px 0 14px}
+.brs[hidden]{display:none}
+.brs .lab{font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.brs button{font:inherit;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:transparent;color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer;text-align:left;line-height:1.2}
+.brs button small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.brs button[aria-pressed="true"]{background:var(--line);color:#fff}
+.brs button[aria-pressed="true"] small{color:#fff;opacity:.85}
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.35;padding:6px 9px;border-radius:6px;max-width:260px;display:none;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+#tip b{font-weight:800}
+.note{font-size:13px;color:var(--muted);margin-top:10px;max-width:75ch}
+</style></head><body><main>
+<p style="margin:0 0 10px"><a href="./" style="color:var(--muted);font-weight:600;text-decoration:none">← Back to the map</a></p>
+<h1>Stopping patterns</h1>
+<p class="sub">Every stopping pattern on NSW intercity lines, Sydney Trains and ferries in the timetable feed for __RANGE__. Choose a network and line, then select a column to open its timetable.</p>
+<div class="dirs modes" id="modes" role="group" aria-label="Network"></div>
+<div class="lines" id="lines"></div>
+<div class="brs" id="brs" role="group" aria-label="Branches"></div>
+<div class="ctl"><button id="flip" aria-pressed="false">⇅ Flip direction</button><button id="sort" aria-pressed="false">Group by route</button><button id="rare" aria-pressed="false"></button></div>
+<p class="meta" id="meta"></p>
+<div class="key"><span><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="5" style="fill:var(--bg);stroke:var(--line)" stroke-width="2.5"/></svg>Stops</span><span><svg width="22" height="16" aria-hidden="true"><line x1="11" y1="0" x2="11" y2="16" style="stroke:var(--line)" stroke-width="3"/><line x1="7" y1="8" x2="15" y2="8" style="stroke:var(--line)" stroke-width="1.5"/></svg>Passes without stopping</span><span><svg width="22" height="16" aria-hidden="true"><line x1="2" y1="8" x2="20" y2="8" style="stroke:var(--line)" stroke-width="2" stroke-dasharray="3 3"/></svg>Changes to another section or branch</span></div>
+<div class="grid"><div class="names" id="names"></div><div class="scroll" id="scroll"></div></div>
+<section id="tt" hidden aria-live="polite">
+<h2 id="tth"></h2><p class="meta" id="ttm"></p>
+<div class="dirs" id="dirs"></div>
+<div class="tw"><table id="tbl"></table></div>
+<p class="note">Each column is a distinct run. The top row shows the days it operates within the feed period. Times after midnight are shown on the 24-hour clock.</p>
+</section>
+</main>
+<div id="tip" role="tooltip"></div>
+<script>
+const COL={CCN:'#D11F2F',BMT:'#F99D1C',SCO:'#005AA3',SHL:'#84B817',HUN:'#833134',T1:'#F99D1C',T2:'#0098CD',T3:'#F37021',T4:'#005AA3',T5:'#C4258F',T6:'#7D3F21',T7:'#6F818E',T8:'#00954C',T9:'#D11F2F',F1:'#00774B',F2:'#144734',F3:'#648C3C',F4:'#BFD730',F5:'#286142',F6:'#00AB51',F7:'#00B189',F8:'#55622B',F9:'#65B32E',F10:'#5AB031'};
+const col=k=>COL[k]||'#3F7F86';
+const MODES=[['I','Intercity'],['T','Sydney Trains'],['F','Ferries']];let ALL=null,mode='I',D=[];
+const OUT={CCN:'From Sydney',BMT:'From Sydney',SCO:'From Sydney',SHL:'From Sydney',HUN:'From Newcastle'};
+const IN={CCN:'Towards Sydney',BMT:'Towards Sydney',SCO:'Towards Sydney',SHL:'Towards Sydney',HUN:'Towards Newcastle'};
+const THRU={CCN:[[2,3]],SCO:[[0,1],[1,2],[2,3]],HUN:[[0,1]]};
+const RH=24,CW=34,HH=34,SH=28,NS='http://www.w3.org/2000/svg';
+let brSel=new Set();let cur=0,sel=-1,dir=0,row=-1,flip=false,byRoute=false,showRare=false;
+const $=id=>document.getElementById(id);
+function el(n,a,p){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function rows(L){const r=[];let y=HH;const secs=flip?[...L.sec].reverse():L.sec;secs.forEach(([t,a,b])=>{if(L.sec.length>1){r.push({h:1,t:flip?t.split(' – ').reverse().join(' – '):t,y});y+=SH;}const ids=[];for(let i=a;i<=b;i++)ids.push(i);if(flip)ids.reverse();ids.forEach(i=>{r.push({i,y});y+=RH;});});return{r,H:y+10};}
+function hm(m){m=((m%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+const tot=p=>p[1]+p[2];
+function visible(L){
+let v=L.p.map((p,j)=>j);
+if(L.br&&brSel.size){const sets=L.br.map(b=>new Set(b[2]));const ex=sets.map((s,i)=>new Set([...s].filter(x=>!sets.some((o,j)=>j!==i&&o.has(x)))));
+v=v.filter(j=>{const st=L.p[j][0];return[...brSel].some(i=>st.some(x=>ex[i].has(x))||st.every(x=>sets[i].has(x)));});}
+const pool=v;const all=pool.reduce((s,j)=>s+tot(L.p[j]),0),thr=Math.max(5,all*0.01);const rare=pool.filter(j=>tot(L.p[j])<thr);if(!showRare)v=v.filter(j=>tot(L.p[j])>=thr||j===sel);
+return{v,rare:rare.length};}
+function straight(L,u,v,su,sv){if(L.adj){const a=Math.min(u,v),b=Math.max(u,v);for(let i=a;i<b;i++)if(!L.adj[i])return false;return true;}
+return su===sv||(THRU[L.k]||[]).some(([a,b])=>a===su&&b===sv);}
+function draw(){
+const L=D[cur],c=col(L.k);document.documentElement.style.setProperty('--line',c);
+const {r,H}=rows(L);const Y={},RO={};let n=0;r.forEach(o=>{if(!o.h){Y[o.i]=o.y+RH/2;RO[o.i]=n++;}});
+const {v,rare}=visible(L);
+let order=[...v];
+if(byRoute){const key=j=>{const ys=L.p[j][0].map(i=>Y[i]);return[Math.min(...ys),Math.max(...ys)];};
+order.sort((a,b)=>{const A=key(a),B=key(b);return A[0]-B[0]||A[1]-B[1]||tot(L.p[b])-tot(L.p[a]);});}
+const rb=$('rare');rb.hidden=!rare;rb.textContent=showRare?'Hide '+rare+' rare patterns':'Show '+rare+' rare patterns';rb.setAttribute('aria-pressed',showRare);
+const runs=L.p.reduce((s,p)=>s+p[3].length,0);
+$('meta').textContent=L.p.length+' patterns, '+runs.toLocaleString()+' distinct runs. Numbers above columns count services across the whole period.'+(rare&&!showRare?' Patterns under 1% of services are hidden.':'');
+const zebra=(svg,w)=>r.forEach(o=>{if(o.h)el('rect',{x:0,y:o.y+4,width:w,height:SH-8,style:'fill:var(--band)'},svg);else if(RO[o.i]%2)el('rect',{x:0,y:o.y,width:w,height:RH,style:'fill:var(--band);opacity:.45'},svg);});
+const nm=$('names');nm.innerHTML='';const s1=el('svg',{width:172,height:H},nm);zebra(s1,172);
+if(row>=0&&Y[row]!==undefined)el('rect',{x:0,y:Y[row]-RH/2,width:172,height:RH,style:'fill:var(--sel)'},s1);
+r.forEach(o=>{const t=el('text',{x:4,y:o.y+(o.h?SH:RH)/2,'dominant-baseline':'central',style:o.h?'font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;fill:var(--muted)':'font-size:14px;fill:var(--ink)'+(o.i===row?';font-weight:800':'')},s1);t.textContent=o.h?o.t:L.st[o.i];});
+const sc=$('scroll');sc.innerHTML='';const W=order.length*CW+8;const s2=el('svg',{width:W,height:H,role:'img','aria-label':'Stopping pattern grid'},sc);zebra(s2,W);
+if(row>=0&&Y[row]!==undefined)el('rect',{x:0,y:Y[row]-RH/2,width:W,height:RH,style:'fill:var(--sel)'},s2);
+const sx=i=>L.sec.findIndex(([t,a,b])=>i>=a&&i<=b);
+const HV='fill:var(--hov);pointer-events:none;display:none';
+const hr1=el('rect',{x:0,width:172,height:RH,style:HV},s1),hr2=el('rect',{x:0,width:W,height:RH,style:HV},s2),hc=el('rect',{y:0,width:CW,height:H,rx:4,style:HV},s2);
+const RY=r.filter(o=>!o.h);const tip=$('tip');
+const hide=()=>{[hr1,hr2,hc].forEach(x=>x.style.display='none');tip.style.display='none';};
+const hover=(e,inGrid)=>{const svg=inGrid?s2:s1,b=svg.getBoundingClientRect(),x=e.clientX-b.left,y=e.clientY-b.top;
+const ro=RY.find(o=>y>=o.y&&y<o.y+RH);const k=inGrid?Math.floor((x-4)/CW):-1;const j=k>=0&&k<order.length?order[k]:-1;
+if(ro){hr1.setAttribute('y',ro.y);hr2.setAttribute('y',ro.y);hr1.style.display=hr2.style.display='';}else hr1.style.display=hr2.style.display='none';
+if(j>=0){hc.setAttribute('x',k*CW+4);hc.style.display='';}else hc.style.display='none';
+if(ro&&j>=0){const p=L.p[j],s=ro.i,on=p[0].includes(s);let st='Not on this pattern';
+if(on)st='Stops here';else{const ys=p[0].map(i=>Y[i]);const yy=Y[s];let pass=false;for(let q=1;q<p[0].length;q++){const a=Y[p[0][q-1]],c=Y[p[0][q]];if(yy>Math.min(a,c)&&yy<Math.max(a,c)&&straight(L,p[0][q-1],p[0][q],sx(p[0][q-1]),sx(p[0][q]))){pass=true;break;}}if(pass)st='Passes without stopping';}
+tip.innerHTML='<b>'+L.st[s]+'</b><br>'+st+'<br><span style="opacity:.75">'+L.st[p[0][0]]+' – '+L.st[p[0][p[0].length-1]]+' · '+tot(p).toLocaleString()+' services</span>';
+tip.style.display='block';const tw=tip.offsetWidth;tip.style.left=Math.min(innerWidth-tw-8,e.clientX+14)+'px';tip.style.top=(e.clientY+16)+'px';}else tip.style.display='none';};
+s2.addEventListener('pointermove',e=>hover(e,true));s1.addEventListener('pointermove',e=>hover(e,false));
+s2.addEventListener('pointerleave',hide);s1.addEventListener('pointerleave',hide);
+order.forEach((j,k)=>{const p=L.p[j],x=k*CW+CW/2+4;const g=el('g',{class:'col'+(j===sel?' on':''),style:'cursor:pointer',tabindex:0,role:'button','aria-label':'Pattern: '+L.st[p[0][0]]+' to '+L.st[p[0][p[0].length-1]]},s2);
+el('rect',{class:'bg',x:k*CW+4,y:0,width:CW,height:H,rx:4},g);
+const nn=tot(p);el('text',{x,y:HH/2,'text-anchor':'middle','dominant-baseline':'central',style:'font-size:11px;font-weight:600;fill:var(--muted)'},g).textContent=nn>=1000?(nn/1000).toFixed(1)+'k':nn;
+let hk=0;const served=new Set(p[0]);
+for(let q=1;q<p[0].length;q++){const u=p[0][q-1],w=p[0][q];if(u===w)continue;
+if(straight(L,u,w,sx(u),sx(w))){el('line',{x1:x,x2:x,y1:Y[u],y2:Y[w],stroke:c,'stroke-width':3},g);
+const lo=Math.min(Y[u],Y[w]),hi=Math.max(Y[u],Y[w]);for(const i in Y){const y=Y[i];if(y>lo&&y<hi&&!served.has(+i))el('line',{x1:x-4,x2:x+4,y1:y,y2:y,stroke:c,'stroke-width':1.5},g);}}
+else{const o=(hk++%2?-11:11),y1=Y[u],y2=Y[w],sg=y2>y1?1:-1,rr=Math.min(8,Math.abs(y2-y1)/2);el('path',{d:'M'+x+' '+y1+'Q'+(x+o)+' '+y1+' '+(x+o)+' '+(y1+sg*rr)+'V'+(y2-sg*rr)+'Q'+(x+o)+' '+y2+' '+x+' '+y2,fill:'none',stroke:c,'stroke-width':2,'stroke-dasharray':'3 3','stroke-linecap':'round'},g);}}
+const open=()=>{sel=j;const tr=p[3];const pd=flip?1:0;dir=tr.some(t=>t[0]===pd)?pd:1-pd;draw();tt();$('tt').scrollIntoView({behavior:'smooth',block:'start'});};
+p[0].forEach(i=>{const hit=(j===sel&&i===row);const ci=el('circle',{cx:x,cy:Y[i],r:hit?7.5:6,stroke:c,'stroke-width':2.5,style:'fill:'+(hit?c:'var(--bg)')},g);ci.addEventListener('click',e=>{e.stopPropagation();row=i;open();});});
+g.addEventListener('click',open);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});});
+}
+function tt(){
+const L=D[cur],p=L.p[sel];if(!p){$('tt').hidden=true;return;}$('tt').hidden=false;
+const a=L.st[p[0][0]],b=L.st[p[0][p[0].length-1]];
+$('tth').textContent=a+' – '+b;
+$('ttm').textContent=p[0].length+' stops. '+p[3].length+' distinct runs.';
+const ds=$('dirs');ds.innerHTML='';
+[0,1].forEach(d=>{const r0=p[3].find(t=>t[0]===d);const k=p[3].filter(t=>t[0]===d).length;if(!k)return;const lab=OUT[L.k]?(d?IN[L.k]:OUT[L.k]):'To '+L.st[r0[1][r0[1].length-1]];const bt=document.createElement('button');bt.textContent=lab+' ('+k+')';bt.setAttribute('aria-pressed',d===dir);bt.onclick=()=>{dir=d;tt();};ds.appendChild(bt);});
+const tr=p[3].filter(t=>t[0]===dir);const tb=$('tbl');tb.innerHTML='';if(!tr.length)return;
+const order=tr[0][1];
+let h='<thead><tr><th>Days</th>'+tr.map(t=>'<th>'+t[3]+'</th>').join('')+'</tr></thead><tbody>';
+order.forEach(s=>{h+='<tr'+(s===row?' class="hl"':'')+'><th scope="row">'+L.st[s]+'</th>'+tr.map(t=>{const k=t[1].indexOf(s);return '<td>'+(k<0?'':hm(t[2][k]))+'</td>';}).join('')+'</tr>';});
+tb.innerHTML=h+'</tbody>';
+}
+const ln=$('lines'),md=$('modes');
+const reset=()=>{sel=-1;row=-1;brSel=new Set();$('tt').hidden=true;};
+function brs(){const L=D[cur],box=$('brs');box.innerHTML='';box.hidden=!(L.br&&L.br.length>1);if(box.hidden)return;
+const lab=document.createElement('span');lab.className='lab';lab.textContent='Branches';box.appendChild(lab);
+const all=document.createElement('button');all.textContent='All';all.setAttribute('aria-pressed',brSel.size===0);all.onclick=()=>{brSel=new Set();sel=-1;$('tt').hidden=true;brs();draw();};box.appendChild(all);
+L.br.forEach((b,i)=>{const bt=document.createElement('button');bt.innerHTML=b[0]+'<small>'+b[1]+'</small>';bt.setAttribute('aria-pressed',brSel.has(i));bt.onclick=()=>{brSel.has(i)?brSel.delete(i):brSel.add(i);if(brSel.size===L.br.length)brSel=new Set();sel=-1;$('tt').hidden=true;brs();draw();};box.appendChild(bt);});}
+function chips(){ln.innerHTML='';D.forEach((L,i)=>{const b=document.createElement('button');b.style.setProperty('--c',col(L.k));b.innerHTML='<span class="code">'+L.k+'</span>'+L.n;b.setAttribute('aria-pressed',i===cur);
+b.onclick=()=>{cur=i;reset();[...ln.children].forEach((c,k)=>c.setAttribute('aria-pressed',k===i));brs();draw();};ln.appendChild(b);});}
+$('flip').onclick=()=>{flip=!flip;$('flip').setAttribute('aria-pressed',flip);draw();if(sel>=0){const tr=D[cur].p[sel][3];const pd=flip?1:0;if(tr.some(t=>t[0]===pd)){dir=pd;tt();}}};
+$('sort').onclick=()=>{byRoute=!byRoute;$('sort').setAttribute('aria-pressed',byRoute);draw();};
+$('rare').onclick=()=>{showRare=!showRare;draw();};
+fetch('data/patterns.json?v=__VER__').then(r=>r.json()).then(j=>{ALL=j;D=ALL.I;md.innerHTML='';
+MODES.forEach(([m,lab])=>{const b=document.createElement('button');b.textContent=lab;b.setAttribute('aria-pressed',m===mode);b.onclick=()=>{mode=m;D=ALL[m];cur=0;reset();[...md.children].forEach(c=>c.setAttribute('aria-pressed',c===b));chips();brs();draw();};md.appendChild(b);});
+chips();brs();draw();}).catch(()=>{$('meta').textContent='Could not load the timetable data. Refresh to try again.';});
+</script></body></html>

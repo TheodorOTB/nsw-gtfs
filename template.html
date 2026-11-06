@@ -46,10 +46,16 @@ input[type=search]{flex:1}select{flex:1;max-width:50%}
 .it.pkd{background:color-mix(in srgb,var(--line) 40%,transparent)}
 #pickbar{display:none;align-items:center;justify-content:space-between;gap:8px;margin:6px 8px 4px;padding:7px 10px;border-radius:9px;background:var(--ink);color:var(--panel);font:600 12.5px Archivo,sans-serif}
 #pickbar button{font:700 12px Archivo,sans-serif;border:0;border-radius:999px;padding:4px 10px;background:var(--panel);color:var(--ink);cursor:pointer}
+.dday{border-top:1px solid var(--line)}.dday summary{cursor:pointer;padding:8px;font:700 13px Archivo,sans-serif;display:flex;justify-content:space-between;gap:8px;list-style:none}
+.dday summary::-webkit-details-marker{display:none}.dday summary::before{content:'▸';margin-right:6px;color:var(--muted)}.dday[open] summary::before{content:'▾'}
+.dday summary small{font:600 12px "Archivo Narrow",sans-serif;color:var(--muted)}.dday.today summary{color:var(--ink);background:color-mix(in srgb,var(--line) 45%,transparent);border-radius:8px}
+.dep{display:flex;gap:10px;align-items:baseline;padding:3px 8px 3px 26px;font-size:12.5px}.dep b{font:700 13.5px "Archivo Narrow",sans-serif;min-width:44px;font-variant-numeric:tabular-nums}.dep span{color:var(--muted)}
+.dep.arr b{color:var(--muted)}
 @media (max-width:720px){#panel{left:0;right:0;top:auto;bottom:0;width:auto;height:55%;border-radius:16px 16px 0 0}#panel.min{height:auto}#panel.min #list,#panel.min #count,#panel.min .types,#panel.min .row,#panel.min #hint,#panel.min .btns .x{display:none}#tog{display:inline-block}}
 </style></head><body>
 <div id="map"></div><div id="loading" style="display:none;position:absolute;z-index:1100;top:12px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font:600 13px Archivo,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.15)">Loading…</div>
 <aside id="panel"><header><h1>NSW public transport map</h1><div id="feedd" style="font-size:11.5px;color:var(--muted);margin-top:3px"></div>
+<a href="patterns.html" style="display:inline-block;margin-top:6px;font:700 12px Archivo,sans-serif;color:var(--ink)">Stopping patterns &amp; timetables →</a>
 <div class="tabs" id="tabs"></div>
 <p id="hint"></p>
 <div class="types" id="types"></div>
@@ -177,7 +183,7 @@ async function select(e,zoom){await Promise.all([ensure('stops'),ensure(geoOf(e)
  const c=colOf(e),lls=e.l.map(dec),ml=e.m==='bus'?e.ml:lls.length;
  hl=L.layerGroup(lls.flatMap((ll,j)=>j>=ml?[L.polyline(ll,{renderer:rend,color:c,weight:3,opacity:.75,dashArray:'6 6',interactive:false})]:[L.polyline(ll,{renderer:rend,color:'#fff',weight:9,opacity:.9,interactive:false}),L.polyline(ll,{renderer:rend,color:c,weight:5,interactive:false})])).addTo(map);
  const ss=stopsOf(e),nmn=e.nm||ss.length;
- stopL=L.layerGroup(ss.map((si,k)=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];return L.circleMarker(ll,k<nmn?{renderer:rend,radius:k===0||k===nmn-1?6.5:5,color:c,weight:2.6,fillColor:'#fff',fillOpacity:1}:{renderer:rend,radius:3.8,color:'#888',weight:2,fillColor:'#ddd',fillOpacity:1}).on('click',ev=>{L.DomEvent.stop(ev);stopPop(si,ll)})})).addTo(map);
+ stopL=L.layerGroup(ss.map((si,k)=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];return L.circleMarker(ll,k<nmn?{renderer:rend,radius:k===0||k===nmn-1?6.5:5,color:c,weight:2.6,fillColor:'#fff',fillOpacity:1}:{renderer:rend,radius:3.8,color:'#888',weight:2,fillColor:'#ddd',fillOpacity:1}).on('click',ev=>{L.DomEvent.stop(ev);stopPop(si,ll);depView(e,si)})})).addTo(map);
  const b=L.latLngBounds([]);lls.forEach(ll=>ll.forEach(p=>b.extend(p)));if(zoom)fitTo(b);
  L.popup().setLatLng(lls[0][Math.floor(lls[0].length/2)]).setContent(pop(e)).openOn(map);
  const list=document.getElementById('list');list.innerHTML='';
@@ -186,8 +192,35 @@ async function select(e,zoom){await Promise.all([ensure('stops'),ensure(geoOf(e)
  const nm=document.createElement('div');nm.style.cssText='font-size:12.5px;color:var(--muted);padding:0 8px 6px';nm.textContent=(e.n||e.k)+' · '+e.o;list.appendChild(nm);
  ss.forEach((si,k)=>{if(k===nmn&&k<ss.length){const x=document.createElement('div');x.style.cssText='font:700 12px "Archivo Narrow",sans-serif;color:var(--muted);padding:12px 8px 4px';x.textContent=`Only on some trips (${ss.length-nmn} stops) — grey dots and dashed lines`;list.appendChild(x)}
   const d=document.createElement('div');d.className='st';d.innerHTML=`<i style="border-color:${k<nmn?c:'#999'}"></i><span>${esc(S[si][2])}</span>`;
-  d.onclick=()=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];map.setView(ll,Math.max(map.getZoom(),16));stopPop(si,ll)};list.appendChild(d)});
- document.getElementById('count').textContent='Stops in order along the route'}
+  d.onclick=()=>{const ll=[S[si][0]/1e5,S[si][1]/1e5];map.setView(ll,Math.max(map.getZoom(),16));stopPop(si,ll);depView(e,si)};list.appendChild(d)});
+ document.getElementById('count').textContent='Stops in order along the route · tap a stop for its timetable'}
+// ---------- departures at a stop ----------
+let CAL=null;const DEPC={},DAYS=[];
+async function depData(e){if(!CAL){CAL=await getJSON('dep/cal');CAL.v.forEach((b,i)=>{const a=[];for(let k=0;k<b.length;k++)if(b.charCodeAt(k)===49)a.push(k);DAYS[i]=a})}
+ if(!DEPC[e.id])DEPC[e.id]=await getJSON('dep/'+e.id);return DEPC[e.id]}
+const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+async function depView(e,si){const list=document.getElementById('list'),c=colOf(e);
+ list.innerHTML=`<div class="sh"><button>← Stops</button><span class="bd" style="background:${c}">${esc(e.c)}</span><b style="font-size:13px">${esc(S[si][2])}</b></div><div style="color:var(--muted);font-size:12.5px;padding:4px 8px">Loading timetable…</div>`;
+ list.querySelector('button').onclick=()=>select(e,false);
+ let j;try{busy(true,'Loading timetable…');j=await depData(e)}catch(err){list.lastChild.textContent='No timetable available for this route.';busy(false);return}busy(false);
+ if(selE!==e)return;
+ const pos=new Set();stopsOf(e).forEach((x,k)=>{if(x===si)pos.add(k)});const byDay=new Map();let n=0;
+ for(const r of j.t){for(let i=2;i<r.length;i+=2){if(!pos.has(r[i]))continue;const m=r[i+1],last=i===r.length-2,first=i===2;
+  for(const k of DAYS[r[0]]){const dk=k+Math.floor(m/1440);let a=byDay.get(dk);if(!a)byDay.set(dk,a=[]);a.push([m%1440,r[1],last&&!first]);n++}}}
+ const d0=new Date(CAL.d0+'T00:00:00'),today=new Date();today.setHours(0,0,0,0);const tk=Math.round((today-d0)/864e5);
+ const fmt=new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+ list.lastChild.remove();
+ const info=document.createElement('div');info.style.cssText='color:var(--muted);font-size:12.5px;padding:2px 8px 8px';
+ info.textContent=n?`${n.toLocaleString()} scheduled departures across ${byDay.size} days. Times are as timetabled; check live info before you travel.`:'No departures for this route at this stop in the timetable.';list.appendChild(info);
+ let todayEl=null;
+ [...byDay.keys()].sort((a,b)=>a-b).forEach(dk=>{const a=byDay.get(dk);a.sort((x,y)=>x[0]-y[0]);const d=new Date(d0);d.setDate(d.getDate()+dk);
+  const det=document.createElement('details');det.className='dday'+(dk===tk?' today':'');
+  det.innerHTML=`<summary><span>${dk===tk?'Today · ':dk===tk+1?'Tomorrow · ':''}${fmt.format(d)}</span><small>${a.length} ${a.length===1?'service':'services'}</small></summary>`;
+  let done=false;det.addEventListener('toggle',()=>{if(!det.open||done)return;done=true;const box=document.createElement('div');
+   box.innerHTML=a.map(([m,h,arr])=>`<div class="dep${arr?' arr':''}"><b>${hm(m)}</b><span>${arr?'Arrives · terminates here':'to '+esc(j.h[h]||'')}</span></div>`).join('');det.appendChild(box)});
+  if(dk===tk)todayEl=det;list.appendChild(det)});
+ if(todayEl){todayEl.open=true;todayEl.scrollIntoView({block:'start'})}
+ document.getElementById('count').textContent='Every scheduled departure, by date'}
 function fitTo(b){if(!b.isValid())return;const m=innerWidth<=720;map.fitBounds(b,{paddingTopLeft:[m?20:370,20],paddingBottomRight:[20,m?Math.round(document.getElementById('panel').offsetHeight)+20:20],maxZoom:15})}
 // ---------- UI ----------
 Object.entries(MODES).forEach(([m,M])=>{const b=document.createElement('button');b.textContent=M.label;b.dataset.m=m;b.onclick=()=>setTab(m);tabsEl.appendChild(b)});
