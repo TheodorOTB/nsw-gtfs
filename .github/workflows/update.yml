@@ -53,6 +53,8 @@ jobs:
         run: curl -sSfL --retry 3 -o gtfs.zip "https://github.com/${{ github.repository }}/releases/download/latest/gtfs.zip"
       - name: Build the map
         run: python3 build_map.py gtfs.zip site/index.html template.html
+      - name: Build the stopping patterns page
+        run: python3 build_patterns.py gtfs.zip site/patterns.html patterns_template.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
